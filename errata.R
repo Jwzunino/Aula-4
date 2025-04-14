@@ -1,0 +1,6 @@
+install.packages('quarto')
+library('Quarto')
+install.packages('palmerpenguins')
+install.packages("WDI")
+install.packages("gganimate")
+install.packages("gifski")
