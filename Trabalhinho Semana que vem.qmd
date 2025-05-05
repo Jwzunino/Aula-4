@@ -1,0 +1,180 @@
+---
+title: "**Evolução da Taxa de Natalidade nos Países**"
+format: html
+editor: visual
+---
+
+```{r}
+#| label: load-packages
+#| include: false
+
+library(tidyverse)
+library(WDI)
+library(scales)
+library(gganimate)
+library(gifski)
+library(quarto)
+```
+
+```{r}
+#| label: load-data
+#| include: false
+
+birth_data <- WDI(
+  indicator = "SP.DYN.CBRT.IN",
+  start = 2000,
+  end = 2023,
+  extra = TRUE
+) %>%
+  filter(!is.na(SP.DYN.CBRT.IN))
+
+# Top 10 países com maior taxa média de natalidade
+top10_birth <- birth_data %>%
+  group_by(country) %>%
+  summarise(avg_birth = mean(SP.DYN.CBRT.IN, na.rm = TRUE)) %>%
+  arrange(desc(avg_birth)) %>%
+  slice_head(n = 10) %>%
+  pull(country) %>%
+  { filter(birth_data, country %in% .) }
+
+birth_2023 <- birth_data %>%
+  filter(year == 2022) %>%
+  group_by(country) %>%
+  summarise(valor = mean(SP.DYN.CBRT.IN, na.rm = TRUE)) %>%
+  arrange(desc(valor)) %>%
+  slice_head(n = 10)
+```
+
+## **Introdução**
+
+A taxa bruta de natalidade, que mede o número de nascimentos por 1.000 habitantes em um determinado ano, é um dos indicadores mais fundamentais da dinâmica populacional. Nas últimas décadas, muitos países, especialmente economias avançadas e algumas economias emergentes, têm apresentado uma tendência clara de queda na natalidade. Esse fenômeno, frequentemente associado ao envelhecimento da população, urbanização e mudanças culturais, levanta sérias preocupações sobre sustentabilidade econômica, previdência social e produtividade no longo prazo.
+
+Nesta análise, examinamos a evolução da taxa de natalidade nos últimos 20 anos e comparamos os países com os maiores índices recentes, evidenciando onde os declínios são mais acentuados e o que isso pode significar em termos de impacto socioeconômico.
+
+## **Objetivo**
+
+O objetivo principal deste estudo é visualizar e compreender como a taxa de natalidade tem se comportado ao longo do tempo em diferentes países, destacando aqueles com os níveis mais altos e os que enfrentam declínios mais críticos. A análise busca relacionar essas mudanças demográficas com potenciais desafios econômicos, como o aumento da dependência populacional, escassez de mão de obra e pressão sobre os sistemas previdenciários e de saúde pública.
+
+## **Dados Utilizados**
+
+Os dados utilizados foram extraídos diretamente do Banco Mundial, utilizando o indicador **SP.DYN.CBRT.IN**, que representa a **taxa bruta de natalidade**. Essa métrica é calculada com base no número total de nascimentos por 1.000 habitantes a cada ano. A análise cobre o período entre 2000 e 2023, permitindo uma comparação histórica e geográfica entre países com diferentes padrões de crescimento populacional.
+
+## **Metodologia**
+
+-   **Fonte dos Dados:** Banco Mundial (indicador SP.DYN.CBRT.IN)
+
+-   **Ferramentas Utilizadas:** Pacotes `WDI`, `ggplot2`, `dplyr` e `gganimate` no R.
+
+-   **Visualizações Criadas:**
+
+    -    Série temporal animada com os países de maior natalidade média.
+
+    -    Comparativo da taxa de natalidade dos países com os maiores índices no ano mais recente disponível.
+
+    -    Análise detalhada de três países selecionados com altos índices ou tendências relevantes.
+
+## **Evolução da Taxa de Natalidade (2000–2023)**
+
+A seguir, apresentamos uma visualização animada da taxa de natalidade ao longo do tempo nos 10 países com as maiores médias no período observado. Apesar de alguns países manterem níveis elevados, nota-se uma tendência geral de declínio gradual, que pode sinalizar futuros desequilíbrios demográficos e impactos sobre o crescimento econômico.
+
+```{r}
+#| label: animated-birth-rate
+#| echo: false
+#| warning: false
+
+ggplot(top10_birth, aes(x = year, y = SP.DYN.CBRT.IN, color = country, group = country)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  labs(title = "Evolução da Taxa de Natalidade",
+       subtitle = "Ano: {frame_along}",
+       x = "Ano",
+       y = "Nascimentos por 1.000 habitantes",
+       color = "País") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 18, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 13)
+  ) +
+  transition_reveal(year)
+```
+
+## **Comparação da Taxa de Natalidade nos Últimos Anos**
+
+No gráfico abaixo, comparamos os países com as maiores taxas de natalidade no ano mais recente disponível (geralmente 2023), reforçando o contraste com os países onde a taxa já caiu para níveis críticos. Essa visualização ajuda a entender onde a pressão demográfica será mais intensa — tanto pelo excesso quanto pela escassez de nascimentos.
+
+```{r}
+#| label: birth-cross-section
+#| echo: false
+
+latest_year <- max(top10_birth$year, na.rm = TRUE)
+cross_section_data <- top10_birth %>%
+  filter(year == latest_year)
+
+g1 <- ggplot(cross_section_data, aes(x = reorder(country, SP.DYN.CBRT.IN), y = SP.DYN.CBRT.IN, fill = country)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  labs(title = paste("Taxa de Natalidade por País em", latest_year),
+       x = "País",
+       y = "Nascimentos por 1.000 habitantes") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(size = 18, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text.x = element_text(size = 9, angle = 45, hjust = 1)
+  )
+
+g2 <- ggplot(birth_2023, aes(x = reorder(country, valor), y = valor, fill = country)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  labs(title = "Taxa de Natalidade por País em 2022",
+       x = "País",
+       y = "Nascimentos por 1.000 habitantes") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(size = 18, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text.x = element_text(size = 9, angle = 45, hjust = 1)
+  )
+
+g2
+g1
+```
+
+```         
+```
+
+## **Séries Temporais por País: Casos Relevantes**
+
+Selecionamos três países para destacar diferentes trajetórias demográficas:
+
+-    **Chad**, com uma das maiores taxas de natalidade do mundo, mas ainda enfrentando desafios socioeconômicos.
+
+-    **Mali**, com taxas extremamente baixas e envelhecimento populacional acelerado.
+
+-    **Niger**, que transita de uma alta taxa nos anos 1980 para níveis próximos ao de substituição populacional atualmente.
+
+```{r}
+#| label: time-series-birth
+#| echo: false
+#| warning: false
+
+selected_countries <- c("Niger", "Mali", "Chad")  # países com altas taxas de natalidade
+
+time_series_data <- top10_birth %>%
+  filter(country %in% selected_countries)
+
+ggplot(time_series_data, aes(x = year, y = SP.DYN.CBRT.IN, color = country)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(title = "Séries Temporais da Taxa de Natalidade",
+       x = "Ano",
+       y = "Nascimentos por 1.000 habitantes",
+       color = "País") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 18, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 13)
+  )
+```
